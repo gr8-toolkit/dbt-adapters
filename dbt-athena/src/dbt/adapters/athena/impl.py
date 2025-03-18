@@ -69,7 +69,7 @@ from dbt.adapters.contracts.connection import AdapterResponse
 from dbt.adapters.contracts.relation import RelationConfig
 from dbt.adapters.sql import SQLAdapter
 
-
+#test
 if TYPE_CHECKING:
     from mypy_boto3_glue.client import GlueClient
 
