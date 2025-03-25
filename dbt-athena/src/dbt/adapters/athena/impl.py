@@ -1,4 +1,5 @@
 import csv
+import json
 import os
 import posixpath as path
 import re
@@ -69,7 +70,6 @@ from dbt.adapters.contracts.connection import AdapterResponse
 from dbt.adapters.contracts.relation import RelationConfig
 from dbt.adapters.sql import SQLAdapter
 
-#test2
 if TYPE_CHECKING:
     from mypy_boto3_glue.client import GlueClient
 
@@ -1490,3 +1490,55 @@ class AthenaAdapter(SQLAdapter):
             "adapter_type": "athena",
             "table_format": table_format,
         }
+
+    # TODO: Add tests later
+    @available
+    def enrich_table_via_lambda(
+        self,
+        lambda_function: str,
+        database: str,
+        table: str,
+        enrichment_modules: list
+    ) -> dict[str, Any]:
+        """
+        Calls an AWS Lambda function to run the enrichment pipeline.
+
+        :param lambda_function: The name of the Lambda function.
+        :param database: The Athena database containing the table to enrich.
+        :param table: The Athena table name (e.g. your history table).
+        :param enrichment_modules: List of enrichment module names to apply.
+        :return: Payload.
+        :raises DbtRuntimeError: if the Lambda function returns an error.
+        """
+
+        conn = self.connections.get_thread_connection()
+        creds = conn.credentials
+        client = conn.handle
+
+        with boto3_client_lock:
+            lambda_client = client.session.client(
+                "lambda",
+                region_name=client.region_name,
+                config=get_boto3_config(num_retries=creds.effective_num_retries),
+            )
+
+        payload = {
+            "database": database,
+            "table": table,
+            "enrichment_modules": enrichment_modules,
+        }
+
+        response = lambda_client.invoke(
+            FunctionName=lambda_function,
+            InvocationType="RequestResponse",
+            Payload=json.dumps(payload),
+        )
+
+        response_payload = json.loads(response["Payload"].read())
+
+        if response_payload.get("statusCode") != 200:
+            error_msg = response_payload.get("error", "Unknown error")
+            LOGGER.error(f"Lambda function returned an error: {error_msg}")
+            raise DbtRuntimeError(error_msg)
+
+        return response_payload
