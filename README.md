@@ -29,7 +29,7 @@ This repository is a monorepo containing the following packages:
   - [dbt-snowflake](/dbt-snowflake)
   - [dbt-spark](/dbt-spark)
 
-Please refer to each of these packages for more specific information.
+Please refer to each of these packages for more specific information
 
 # Getting started
 
