@@ -1031,6 +1031,7 @@ class AthenaAdapter(SQLAdapter):
         # Prepare new version of Glue Table picking up significant fields
         table_input = self._get_table_input(table)
         table_parameters = table_input["Parameters"]
+        original_params: Dict[str, Any] = dict(table.get("Parameters") or {})
 
         # Update table description
         if persist_relation_docs:
@@ -1127,7 +1128,8 @@ class AthenaAdapter(SQLAdapter):
         # Update Glue Table only if table/column description is modified.
         # It prevents redundant schema version creating after incremental runs.
         if need_to_update_table:
-            table_input["Parameters"] = table_parameters
+            merged_params: Dict[str, Any] = {**original_params, **table_parameters}
+            table_input["Parameters"] = merged_params
             glue_client.update_table(
                 CatalogId=catalog_id,
                 DatabaseName=relation.schema,
